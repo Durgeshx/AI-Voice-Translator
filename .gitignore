@@ -1,0 +1,34 @@
+# Virtual Environment
+diarization_env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Audio Files
+*.wav
+*.mp3
+*.m4a
+
+# Database
+*.db
+
+# Generated Reports
+*.pdf
+*.txt
+
+# VS Code
+.vscode/
+
+# Streamlit cache
+.streamlit/
+
+# Model cache
+.cache/
+
+# HuggingFace cache
+*.ckpt
+
+# Temporary files
+temp/
