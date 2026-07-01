@@ -16,7 +16,7 @@ __pycache__/
 
 # Generated Reports
 *.pdf
-*.txt
+
 
 # VS Code
 .vscode/
