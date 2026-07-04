@@ -506,7 +506,6 @@ def render_hero(total_messages: int, total_speakers: int, status: str):
         <div class="vt-hero-stat">MESSAGES · <b>{total_messages}</b></div>
         <div class="vt-hero-stat">SPEAKERS · <b>{total_speakers}</b></div>
         <div class="vt-hero-stat">STATUS · <b style="color:{dot_color};">{status}</b></div>
-        <div class="vt-hero-stat">MODEL · <b>WHISPER + GPT-5.4</b></div>
     </div>
 </div>
 """,
