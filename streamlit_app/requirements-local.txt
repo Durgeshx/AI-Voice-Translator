@@ -1,0 +1,15 @@
+# Full live-pipeline stack — install on your LOCAL machine only.
+# Requires ~2GB disk + working microphone + Hugging Face token (HF_TOKEN in .env)
+# for pyannote/speaker-diarization-3.1.
+#
+# Install both:
+#   pip install -r requirements.txt
+#   pip install -r requirements-local.txt
+
+openai-whisper==20231117
+pyannote.audio==3.1.1
+torch>=2.0.0
+torchaudio>=2.0.0
+librosa>=0.10.0
+sounddevice>=0.4.6
+soundfile>=0.12.1

@@ -23,13 +23,23 @@ streamlit run app.py
 
 Open http://localhost:8501
 
-## Enable full local pipeline
+## Enable full live pipeline (mic + Whisper + pyannote)
 
-Uncomment the heavy AI packages in `requirements.txt` (whisper, pyannote.audio,
-torch, librosa, sounddevice, soundfile) and set your `HF_TOKEN` in `.env`.
+For real microphone recording, local Whisper transcription and
+pyannote speaker diarization, also install the heavy stack:
 
-Without them the app runs happily in **Demo Mode** with a bilingual sample
-conversation so you can showcase the UI.
+```bash
+pip install -r requirements-local.txt
+```
+
+Set your Hugging Face token in `.env` (needed to download
+`pyannote/speaker-diarization-3.1`):
+
+```
+HF_TOKEN=hf_xxxxxxxxxxxxxxxxx
+```
+
+Without these packages the app stays fully functional via **Demo Mode**.
 
 ## Environment
 

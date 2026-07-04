@@ -86,6 +86,7 @@ def apply_names(history: list[dict]) -> list[dict]:
 
 
 LANGUAGES = {
+    "en": "English",
     "hi": "Hindi",
     "es": "Spanish",
     "fr": "French",
@@ -104,6 +105,9 @@ LANGUAGES = {
 # ──────────────────────────────────────────────────────────────
 def translate(text: str, target_code: str) -> str:
     """Try deep-translator first (fast, free), fall back to LLM."""
+    if target_code == "en":
+        # audio is transcribed as English → target is English → passthrough
+        return text
     try:
         from deep_translator import GoogleTranslator
 

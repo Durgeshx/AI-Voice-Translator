@@ -108,7 +108,14 @@ def build_demo_history(target_language_name: str = "Hindi") -> list[dict]:
         "चलो शिप करते हैं। कल सुबह टीम को डेमो दिखाते हैं।",
     ]
     lang = target_language_name.lower()
-    translations = demo_hi if lang.startswith("h") else [t + f" [{target_language_name}]" for t in [e[1] for e in DEMO_CONVERSATION_EN]]
+    english_texts = [e[1] for e in DEMO_CONVERSATION_EN]
+
+    if lang.startswith("h"):
+        translations = demo_hi
+    elif lang.startswith("e"):  # English → English: same-language passthrough
+        translations = english_texts
+    else:
+        translations = [f"{t} [{target_language_name}]" for t in english_texts]
 
     return [
         {"speaker": spk, "english": en, "translation": tr, "sentiment": "NEU", "score": 0.0}

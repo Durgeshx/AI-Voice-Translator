@@ -88,3 +88,16 @@ Upgrade Streamlit UI/UX to a Gen-Z aesthetic:
 - Public URL loads Streamlit UI end-to-end
 - Speakers renamed to Alice / Bob / Charlie propagate to chat bubbles, analytics legend/labels, and streamed AI summary
 - `stream_message()` events land in the UI without buffering
+
+---
+
+## Update — 2026-01-04 (Iteration 3)
+
+### New in this iteration
+- [x] **English target language** — added `en · English` as the first option in the language dropdown
+- [x] **EN → EN passthrough** — when target is English (audio source is already English) `translate()` returns the original text instead of round-tripping through Google Translate
+- [x] **build_demo_history** — English target now shows identical English text on both bubble panes (removed the `[English]` suffix)
+- [x] **Split requirements** — `requirements.txt` (core, hosted-preview safe) and `requirements-local.txt` (heavy live pipeline: openai-whisper, pyannote.audio, torch, torchaudio, librosa, sounddevice, soundfile). README explains both.
+
+### Notes
+- Heavy AI packages cannot build inside the preview pod (setuptools/pkg_resources missing in build isolation) — they're intended for the user's local machine. Hosted preview uses Demo Mode + Emergent LLM key.

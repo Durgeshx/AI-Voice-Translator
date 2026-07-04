@@ -1,4 +1,4 @@
-# Core (required)
+# Core (required for hosted preview + demo mode)
 streamlit>=1.32.0
 plotly>=5.20.0
 pandas>=2.0.0
@@ -8,10 +8,5 @@ deep-translator>=1.11.0
 python-dotenv>=1.0.0
 emergentintegrations>=0.2.0
 
-# Optional heavy AI stack (uncomment when running locally with hardware)
-# openai-whisper==20231117
-# pyannote.audio==3.1.1
-# torch>=2.0.0
-# librosa>=0.10.0
-# sounddevice>=0.4.6
-# soundfile>=0.12.1
+# For full live pipeline (microphone + Whisper + pyannote diarization),
+# also install `requirements-local.txt`  (needs ~2GB disk + HF_TOKEN)
