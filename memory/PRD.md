@@ -67,3 +67,24 @@ Upgrade Streamlit UI/UX to a Gen-Z aesthetic:
 - `/app/streamlit_app/db.py`
 - `/app/streamlit_app/README.md`
 - `/app/streamlit_app/final_premium_app_original.py` (original for reference)
+
+---
+
+## Update — 2026-01-04 (Iteration 2)
+
+### New in this iteration
+- [x] **Speaker rename UI** — collapsible expander in Control Deck lists all detected raw speaker IDs; typing a name applies it everywhere (dual-pane bubbles, donut / bar / sentiment charts, AI summary, PDF/TXT/JSON exports, DB save). Empty field falls back to raw ID.
+- [x] **Streaming AI summary** — new `stream_ai_summary()` bridges Emergent's `stream_message()` async API into a sync generator; consumed via `st.write_stream()` for token-by-token display in a glass card. Session-state-cached so it survives reruns.
+- [x] **Hosted preview** — Streamlit now runs under supervisor (`/etc/supervisor/conf.d/streamlit.conf`) on :8501; the React frontend has been swapped for a tiny Node `http-proxy` server (`/app/frontend/proxy_server.js`) on :3000 that reverse-proxies HTTP + WebSocket to :8501. Old React app still available via `yarn start:react`. Public URL: `${REACT_APP_BACKEND_URL}` serves Streamlit directly.
+
+### Files added / changed
+- `/app/streamlit_app/ai_utils.py` — added `stream_ai_summary()` (thread + queue async→sync bridge)
+- `/app/streamlit_app/app.py` — added `display_name()` / `apply_names()` helpers, Rename Speakers expander, converted summary to streaming display
+- `/app/frontend/proxy_server.js` — new HTTP+WS reverse proxy
+- `/app/frontend/package.json` — new `start` = `node proxy_server.js`, old React kept as `start:react`
+- `/etc/supervisor/conf.d/streamlit.conf` — new program
+
+### Verified
+- Public URL loads Streamlit UI end-to-end
+- Speakers renamed to Alice / Bob / Charlie propagate to chat bubbles, analytics legend/labels, and streamed AI summary
+- `stream_message()` events land in the UI without buffering

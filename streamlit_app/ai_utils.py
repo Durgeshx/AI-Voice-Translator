@@ -9,8 +9,10 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import queue
 import re
-from typing import Iterable
+import threading
+from typing import Iterable, Iterator
 
 from dotenv import load_dotenv
 
@@ -150,6 +152,67 @@ def ai_summary(history: list[dict]) -> str:
         return _run(_chat(_SUMMARY_SYSTEM, transcript, session_id="vt-summary"))
     except Exception:
         return _fallback_summary(history)
+
+
+# ────────────────────────────────────────────────────────────────
+# STREAMING SUMMARY (token-by-token via stream_message)
+# ────────────────────────────────────────────────────────────────
+
+def stream_ai_summary(history: list[dict]) -> Iterator[str]:
+    """Yield summary text chunks as they arrive from the LLM.
+
+    Bridges the library's async streaming API into a sync generator that
+    Streamlit's `st.write_stream()` can consume.
+    """
+    if not history:
+        return
+    if not _has_key():
+        # single yield with the fallback so st.write_stream still works
+        yield _fallback_summary(history)
+        return
+
+    transcript = "\n".join(f"{h['speaker']}: {h['english']}" for h in history)
+
+    q: "queue.Queue[str | None]" = queue.Queue()
+    _SENTINEL = None
+
+    async def _producer():
+        try:
+            from emergentintegrations.llm.chat import (
+                LlmChat,
+                StreamDone,
+                TextDelta,
+                UserMessage,
+            )
+
+            chat = LlmChat(
+                api_key=EMERGENT_LLM_KEY,
+                session_id="vt-summary-stream",
+                system_message=_SUMMARY_SYSTEM,
+            ).with_model(LLM_PROVIDER, LLM_MODEL)
+
+            async for event in chat.stream_message(UserMessage(text=transcript)):
+                if isinstance(event, TextDelta):
+                    if event.content:
+                        q.put(event.content)
+                elif isinstance(event, StreamDone):
+                    break
+        except Exception as e:  # pragma: no cover
+            q.put(f"\n\n_[stream error: {e}]_")
+        finally:
+            q.put(_SENTINEL)
+
+    def _runner():
+        asyncio.run(_producer())
+
+    t = threading.Thread(target=_runner, daemon=True)
+    t.start()
+
+    while True:
+        chunk = q.get()
+        if chunk is _SENTINEL:
+            break
+        yield chunk
 
 
 # ────────────────────────────────────────────────────────────────

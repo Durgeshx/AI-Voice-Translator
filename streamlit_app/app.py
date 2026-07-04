@@ -22,6 +22,7 @@ from ai_utils import (
     ai_summary,
     ai_translate,
     analyze_sentiment_batch,
+    stream_ai_summary,
     _has_key,
 )
 from analytics import (
@@ -67,6 +68,21 @@ if "known_speakers" not in st.session_state:
     st.session_state.known_speakers = []
 if "last_summary" not in st.session_state:
     st.session_state.last_summary = ""
+if "speaker_names" not in st.session_state:
+    st.session_state.speaker_names = {}
+
+
+def display_name(speaker_id: str) -> str:
+    """Resolve raw speaker id → user-friendly name (if renamed)."""
+    return st.session_state.speaker_names.get(speaker_id, speaker_id) or speaker_id
+
+
+def apply_names(history: list[dict]) -> list[dict]:
+    """Return a copy of history with speaker replaced by display name."""
+    return [
+        {**h, "speaker": display_name(h["speaker"]), "raw_speaker": h["speaker"]}
+        for h in history
+    ]
 
 
 LANGUAGES = {
@@ -99,7 +115,7 @@ def translate(text: str, target_code: str) -> str:
 # ──────────────────────────────────────────────────────────────
 # HERO
 # ──────────────────────────────────────────────────────────────
-speakers_set = {h["speaker"] for h in st.session_state.history}
+speakers_set = {display_name(h["speaker"]) for h in st.session_state.history}
 status = "LIVE" if st.session_state.running else "IDLE"
 render_hero(
     total_messages=len(st.session_state.history),
@@ -253,9 +269,45 @@ else:  # Demo mode
 
 
 # ──────────────────────────────────────────────────────────────
+# SPEAKER RENAME PANEL
+# ──────────────────────────────────────────────────────────────
+raw_speakers_in_history = list(dict.fromkeys(h["speaker"] for h in st.session_state.history))
+if raw_speakers_in_history:
+    with st.expander(f"◐ Rename Speakers ({len(raw_speakers_in_history)} detected)", expanded=False):
+        st.markdown(
+            '<div style="font-size:12px;color:var(--text-mute);font-family:JetBrains Mono,monospace;'
+            'letter-spacing:0.08em;margin-bottom:10px;">'
+            "GIVE EACH SPEAKER A HUMAN NAME · APPLIED ACROSS BUBBLES · ANALYTICS · SUMMARY · EXPORTS"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        rename_cols = st.columns(min(len(raw_speakers_in_history), 4))
+        for i, raw in enumerate(raw_speakers_in_history):
+            with rename_cols[i % len(rename_cols)]:
+                new_name = st.text_input(
+                    raw,
+                    value=st.session_state.speaker_names.get(raw, ""),
+                    key=f"rename-{raw}",
+                    placeholder=f"e.g. {'Alice' if i == 0 else 'Bob' if i == 1 else f'Speaker {i+1}'}",
+                    label_visibility="visible",
+                )
+                clean = (new_name or "").strip()
+                if clean:
+                    st.session_state.speaker_names[raw] = clean
+                elif raw in st.session_state.speaker_names:
+                    del st.session_state.speaker_names[raw]
+        rc1, rc2 = st.columns([1, 3])
+        with rc1:
+            if st.button("↺ Reset Names", key="reset-names", use_container_width=True):
+                st.session_state.speaker_names = {}
+                st.rerun()
+
+
+# ──────────────────────────────────────────────────────────────
 # TOP METRICS
 # ──────────────────────────────────────────────────────────────
 strip = metric_strip(st.session_state.history)
+named_history = apply_names(st.session_state.history)
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("Total Messages", len(st.session_state.history))
 m2.metric("Total Words", strip["total_words"])
@@ -281,10 +333,10 @@ if not st.session_state.history:
 else:
     ac1, ac2 = st.columns([1.2, 1])
     with ac1:
-        st.plotly_chart(donut_talking_share(st.session_state.history), use_container_width=True)
+        st.plotly_chart(donut_talking_share(named_history), use_container_width=True)
     with ac2:
-        st.plotly_chart(bar_messages_per_speaker(st.session_state.history), use_container_width=True)
-    st.plotly_chart(line_sentiment_over_time(st.session_state.history), use_container_width=True)
+        st.plotly_chart(bar_messages_per_speaker(named_history), use_container_width=True)
+    st.plotly_chart(line_sentiment_over_time(named_history), use_container_width=True)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -297,20 +349,27 @@ if not st.session_state.history:
 else:
     sc1, sc2 = st.columns([3, 1])
     with sc2:
-        if st.button("↻ Generate Summary", key="gen-summary", use_container_width=True):
-            with st.spinner("GPT-5.4 · synthesizing…"):
-                st.session_state.last_summary = ai_summary(st.session_state.history)
+        gen_clicked = st.button("↻ Stream Summary", key="gen-summary", use_container_width=True)
     with sc1:
-        if st.session_state.last_summary:
+        if gen_clicked:
+            st.markdown(
+                '<div class="vt-card" data-testid="summary-card" style="animation:fadeUp .3s ease;">',
+                unsafe_allow_html=True,
+            )
+            placeholder = st.empty()
+            streamed = placeholder.write_stream(stream_ai_summary(named_history))
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.session_state.last_summary = streamed if isinstance(streamed, str) else "".join(streamed)
+        elif st.session_state.last_summary:
             st.markdown(
                 f'<div class="vt-card" data-testid="summary-card">{st.session_state.last_summary}</div>',
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                '<div class="vt-empty" data-testid="summary-empty"><h4>Ready to summarize</h4>'
-                '<p>Click <b>Generate Summary</b> — the model will output TL;DR, key topics, speaker highlights, '
-                'sentiment vibe and action items.</p></div>',
+                '<div class="vt-empty" data-testid="summary-empty"><h4>Ready to stream</h4>'
+                '<p>Click <b>Stream Summary</b> — GPT-5.4 will write out TL;DR, key topics, speaker highlights, '
+                'sentiment vibe and action items token-by-token.</p></div>',
                 unsafe_allow_html=True,
             )
 
@@ -327,7 +386,7 @@ else:
     with ec1:
         st.download_button(
             "📄 Download PDF",
-            data=to_pdf(st.session_state.history),
+            data=to_pdf(named_history),
             file_name=f"voice-translator-{datetime.now().strftime('%Y%m%d-%H%M')}.pdf",
             mime="application/pdf",
             use_container_width=True,
@@ -336,7 +395,7 @@ else:
     with ec2:
         st.download_button(
             "📝 Download TXT",
-            data=to_txt(st.session_state.history),
+            data=to_txt(named_history),
             file_name=f"voice-translator-{datetime.now().strftime('%Y%m%d-%H%M')}.txt",
             mime="text/plain",
             use_container_width=True,
@@ -345,7 +404,7 @@ else:
     with ec3:
         st.download_button(
             "◆ Download JSON",
-            data=to_json(st.session_state.history),
+            data=to_json(named_history),
             file_name=f"voice-translator-{datetime.now().strftime('%Y%m%d-%H%M')}.json",
             mime="application/json",
             use_container_width=True,
@@ -353,7 +412,7 @@ else:
         )
     with ec4:
         if st.button("💾 Save to History DB", key="save-db", use_container_width=True):
-            n = save_history(st.session_state.history)
+            n = save_history(named_history)
             st.success(f"Saved {n} new message(s) to local DB.")
 
 
@@ -372,8 +431,9 @@ else:
     known = st.session_state.known_speakers
     target_name = LANGUAGES.get(lang_code, lang_code.upper())
     for idx, item in enumerate(st.session_state.history[-30:]):
-        sp = item["speaker"]
-        sty = speaker_style(sp, known)
+        raw_sp = item["speaker"]
+        sp = display_name(raw_sp)
+        sty = speaker_style(raw_sp, known)
         sentiment = item.get("sentiment", "NEU").upper()
         score = item.get("score", 0.0)
         sent_class = "pos" if sentiment == "POS" else "neg" if sentiment == "NEG" else "neu"
