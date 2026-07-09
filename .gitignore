@@ -33,3 +33,14 @@ __pycache__/
 # Temporary files
 temp/
 output.txt
+output.txt
+cleanup_backup/
+conversation_history.db
+conversation_report.pdf
+*.wav
+*.mp3
+*.m4a
+*.flac
+uploaded_*
+final_live_chunk.wav
+live_chunk.wav
